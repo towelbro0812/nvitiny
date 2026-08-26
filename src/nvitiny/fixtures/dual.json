@@ -1,0 +1,90 @@
+{
+  "driver_version": "550.127.05",
+  "cuda_version": "12.4",
+  "gpus": [
+    {
+      "index": 0,
+      "name": "NVIDIA GeForce RTX 4090",
+      "uuid": "GPU-00000000-aaaa-bbbb-cccc-000000000000",
+      "memory_used": 23085449216,
+      "memory_total": 25757220864,
+      "memory_percent": 89.6,
+      "gpu_utilization": 97,
+      "memory_utilization": 62,
+      "temperature": 71,
+      "fan_speed": 68,
+      "power_usage": 381000,
+      "power_limit": 450000,
+      "clock_sm": 2520,
+      "clock_graphics": 2520,
+      "clock_memory": 10501,
+      "compute_mode": "Default",
+      "persistence_mode": "Enabled",
+      "processes": [
+        {
+          "pid": 884213,
+          "username": "bob",
+          "gpu_memory": 22548578304,
+          "gpu_memory_human": "",
+          "cpu_percent": 412.5,
+          "memory_percent": 16.40625,
+          "running_time_human": "6:12:44",
+          "command": "/home/bob/.venv/bin/python train.py --model llama-3-8b --bs 8",
+          "name": "python",
+          "type": "C"
+        },
+        {
+          "pid": 884901,
+          "username": "bob",
+          "gpu_memory": 419430400,
+          "gpu_memory_human": "",
+          "cpu_percent": 18.0,
+          "memory_percent": 0.30517578125,
+          "running_time_human": "6:11:02",
+          "command": "/usr/bin/python3 /home/bob/tools/tensorboard --logdir runs",
+          "name": "tensorboard",
+          "type": "C"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "NVIDIA GeForce RTX 4090",
+      "uuid": "GPU-00000000-aaaa-bbbb-cccc-000000000001",
+      "memory_used": 12582912,
+      "memory_total": 25757220864,
+      "memory_percent": 0.0,
+      "gpu_utilization": 0,
+      "memory_utilization": 0,
+      "temperature": 34,
+      "fan_speed": 30,
+      "power_usage": 21000,
+      "power_limit": 450000,
+      "clock_sm": 210,
+      "clock_graphics": 210,
+      "clock_memory": 10501,
+      "compute_mode": "Default",
+      "persistence_mode": "Enabled",
+      "processes": [
+        {
+          "pid": 236404,
+          "username": "gdm",
+          "gpu_memory": 12582912,
+          "gpu_memory_human": "",
+          "cpu_percent": 0.0,
+          "memory_percent": 0.0091552734375,
+          "running_time_human": "4:09:34",
+          "command": "/usr/lib/xorg/Xorg vt1 -displayfd 3 -auth /run/user/120/gdm/Xauthority",
+          "name": "Xorg",
+          "type": "C"
+        }
+      ]
+    }
+  ],
+  "host": {
+    "cpu_percent": 63.4,
+    "memory_used": 51539607552,
+    "memory_total": 137438953472,
+    "memory_percent": 37.5
+  }
+}
