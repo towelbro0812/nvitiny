@@ -30,16 +30,6 @@ uv tool install git+https://github.com/towelbro0812/nvitiny.git          # 裝�
 uvx --from git+https://github.com/towelbro0812/nvitiny.git nvitiny       # 不安裝，直接跑
 ```
 
-公開倉庫走 HTTPS 不需要任何認證。可以在網址後面加 `@v0.1.0` 或 `@main`
-指定 tag 或分支；私有倉庫則改用 `git+ssh://git@github.com/...`。
-
-本機開發時用路徑：
-
-```bash
-uv tool install /path/to/nvitiny
-uv tool uninstall nvitiny
-```
-
 ## 用法
 
 ```bash
