@@ -11,7 +11,6 @@ DIM = "dim"
 LABEL = "bright_black"
 HEADER = "bold"
 RULE = "bright_black"
-SPARK = "cyan"
 BAR_EMPTY = "bright_black"
 
 

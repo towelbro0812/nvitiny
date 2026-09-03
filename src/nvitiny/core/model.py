@@ -16,7 +16,7 @@ class ProcSnapshot:
     gpu_memory: int | None
     cpu_percent: float | None
     memory_percent: float | None
-    running_time_human: str | None
+    running_time: float | None      # 秒。格式化交給 view.units.duration
     command: str | None
     name: str | None
     type: str | None
@@ -36,6 +36,7 @@ class GpuSnapshot:
     power_usage: int | None
     power_limit: int | None
     clock_sm: int | None
+    clock_sm_max: int | None
     clock_memory: int | None
     processes: list[ProcSnapshot] = field(default_factory=list)
     unified_memory: bool = False

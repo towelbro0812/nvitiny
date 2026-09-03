@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from rich.cells import cell_len
 from rich.console import Group
 from rich.text import Text
@@ -23,7 +25,7 @@ def facts(gpu: GpuSnapshot, *, compact: bool) -> list[str]:
     items = (
         fmt.celsius(gpu.temperature),
         fmt.watts(gpu.power_usage, gpu.power_limit, compact=compact),
-        fmt.mhz(gpu.clock_sm),
+        fmt.mhz(gpu.clock_sm, gpu.clock_sm_max, compact=compact),
         None if gpu.fan_speed is None else f"fan {gpu.fan_speed}%",
     )
     return [item for item in items if item]
@@ -40,7 +42,10 @@ def _header(gpu: GpuSnapshot, width: int, tier: str) -> Text:
     return out
 
 
-def _memory_line(gpu: GpuSnapshot, width: int, *, inline_unified: bool) -> Text:
+def _memory_line(
+    gpu: GpuSnapshot, width: int, *, inline_unified: bool, extras: Sequence[str] = (),
+) -> Text:
+    """記憶體，後面接掛不到 bar 列上的次要欄位。"""
     body = f"{fmt.bytes_short(gpu.memory_used)}/{fmt.bytes_short(gpu.memory_total)}"
     out = Text()
     out.append("  ")
@@ -50,6 +55,10 @@ def _memory_line(gpu: GpuSnapshot, width: int, *, inline_unified: bool) -> Text:
         gap = " " if inline_unified else "  "
         if width >= cell_len(body) + len(gap) + 10:
             out.append(f"{gap}unified", style=theme.DIM)
+    for item in extras:
+        if cell_len(out.plain) + 2 + cell_len(item) <= width:
+            out.append("  ")
+            out.append(item, style=theme.DIM)
     return out
 
 
@@ -92,9 +101,10 @@ def gpu_block(
             "U", gpu.gpu_utilization, theme.load_color(gpu.gpu_utilization), width,
             items[1] if len(items) > 1 else None, theme.DIM, right_width,
         ))
-        lines.append(_memory_line(gpu, width, inline_unified=False))
-        if layout.show_cpu_column and len(items) > 2:
-            lines.append(Text("  " + "  ".join(items[2:]), style=theme.DIM))
+        lines.append(_memory_line(
+            gpu, width, inline_unified=False,
+            extras=items[2:] if layout.show_cpu_column else (),
+        ))
 
     lines += _spark_lines(gpu, layout, history)
     return lines
@@ -133,6 +143,7 @@ def proc_block(gpu: GpuSnapshot, layout: LayoutPlan, limit: int) -> list[Text]:
             proc, width,
             show_user=layout.show_user_column,
             show_cpu=layout.show_cpu_column,
+            show_detail=layout.show_proc_detail,
             gpu_memory_total=gpu.memory_total,
         ))
     hidden = len(gpu.processes) - len(shown)
@@ -145,25 +156,54 @@ def proc_block(gpu: GpuSnapshot, layout: LayoutPlan, limit: int) -> list[Text]:
     return lines
 
 
-def version_line(snap: Snapshot, width: int) -> Text | None:
-    drv, cuda = snap.driver_version, snap.cuda_version
-    if not drv and not cuda:
-        return None
-    full = "  ".join(p for p in (f"drv {drv}" if drv else "", f"cuda {cuda}" if cuda else "") if p)
-    compact = " ".join(p for p in (drv or "", f"cu{cuda}" if cuda else "") if p)
-    return Text(fmt.truncate(full if width >= len(full) + 2 else compact, width), style=theme.DIM)
-
-
-def host_line(snap: Snapshot, width: int) -> Text:
+def _host_part(snap: Snapshot) -> Text:
+    """`C 9%  R 10.1G/122G`。會跳動的數字，任何寬度都不犧牲。"""
     host = snap.host
-    left = Text()
-    left.append("HOST ", style=theme.LABEL)
-    left.append(f"cpu {host.cpu_percent:.0f}%", style=theme.load_color(host.cpu_percent))
-    right = Text(
-        f"ram {fmt.bytes_short(host.memory_used)}/{fmt.bytes_short(host.memory_total)}",
+    out = Text()
+    out.append("C ", style=theme.LABEL)
+    out.append(
+        "-" if host.cpu_percent is None else f"{host.cpu_percent:.0f}%",
+        style=theme.load_color(host.cpu_percent),
+    )
+    out.append("  ")
+    out.append("R ", style=theme.LABEL)
+    out.append(
+        f"{fmt.bytes_short(host.memory_used)}/{fmt.bytes_short(host.memory_total)}",
         style=theme.mem_color(host.memory_percent),
     )
-    return widgets.justify(left, right, width)
+    return out
+
+
+def version_forms(snap: Snapshot) -> list[str]:
+    """候選寫法，由寬到窄。縮標籤優先於丟資料。
+
+    cuda 的縮寫保留 ``cu`` 前綴，兩串裸數字並排分不出誰是誰。
+    """
+    drv, cuda = snap.driver_version, snap.cuda_version
+    forms = []
+    if drv and cuda:
+        forms.append(f"drv {drv}  cuda {cuda}")
+        forms.append(f"{drv} cu{cuda}")
+    if drv:
+        forms.append(f"drv {drv}")
+    elif cuda:
+        forms.append(f"cuda {cuda}")
+    forms.append("")
+    return forms
+
+
+def status_line(snap: Snapshot, width: int) -> Text:
+    """頂部一行：host 的 CPU / RAM，後面接放得下的版本資訊。"""
+    left = _host_part(snap)
+    for form in version_forms(snap):
+        if not form:
+            break
+        if cell_len(left.plain) + 2 + len(form) <= width:
+            out = left.copy()
+            out.append("  ")
+            out.append(form, style=theme.DIM)
+            return out
+    return left
 
 
 def compose(
@@ -177,7 +217,6 @@ def compose(
         width, height,
         [len(gpu.processes) for gpu in snap.gpus],
         has_sparks=bool(histories),
-        has_version=bool(snap.driver_version or snap.cuda_version),
     )
     gpus = snap.gpus[: layout.gpus_shown]
 
@@ -189,9 +228,8 @@ def compose(
     )
 
     lines: list[Text] = []
-    version = version_line(snap, width) if layout.show_version else None
-    if version is not None:
-        lines.append(version)
+    if layout.show_status:
+        lines.append(status_line(snap, width))
 
     for i, gpu in enumerate(gpus):
         if layout.separate_gpus and i:
@@ -205,8 +243,6 @@ def compose(
             else f"  … +{layout.hidden_gpus} GPU"
         )
         lines.append(Text(fmt.truncate(note, width), style=theme.DIM))
-    if layout.show_host:
-        lines.append(host_line(snap, width))
 
     # 單一守門點：不管上游怎麼算，送出去的每一行都保證不超過 width、
     # 總行數不超過 height。個別元件算錯不會變成畫面破圖。

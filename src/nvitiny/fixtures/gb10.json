@@ -31,7 +31,8 @@
           "running_time_human": "14:49:10",
           "command": "/home/alice/sim/kit/kit /home/alice/sim/apps/sim.exp.full.kit",
           "name": "kit",
-          "type": "C+G"
+          "type": "C+G",
+          "running_time_in_seconds": 53350
         },
         {
           "pid": 236404,
@@ -43,7 +44,8 @@
           "running_time_human": "4:09:34",
           "command": "/usr/lib/xorg/Xorg vt1 -displayfd 3 -auth /run/user/120/gdm/Xauthority -nolisten tcp -background none -noreset -keeptty -novtswitch -verbose 3",
           "name": "Xorg",
-          "type": "G"
+          "type": "G",
+          "running_time_in_seconds": 14974
         },
         {
           "pid": 236611,
@@ -55,9 +57,11 @@
           "running_time_human": "4:09:33",
           "command": "/usr/bin/gnome-shell",
           "name": "gnome-shell",
-          "type": "G"
+          "type": "G",
+          "running_time_in_seconds": 14973
         }
-      ]
+      ],
+      "clock_sm_max": 3003
     }
   ],
   "host": {

@@ -13,8 +13,8 @@ import pytest
 from rich.cells import cell_len
 from rich.console import Console
 
-from nvitiny.view.compose import compose
-from nvitiny.view.plan import BAR_MIN_WIDTH, FIXED_LINES, S
+from nvitiny.view.compose import compose, status_line, version_forms
+from nvitiny.view.plan import BAR_MIN_WIDTH, FIXED_LINES, S, tier_for
 
 BAR = re.compile(r"▕([█░]*)▏")
 SPARK_CHARS = "⣀⣤⣶⣿⣷⣦⣴⠀⣠⣄⣆⣇⣧⣼⣾⡇⡄⡆⡀⢀⢠⢰⢸⣸"
@@ -42,12 +42,12 @@ def gpu_blocks(lines):
     return blocks
 
 
-@pytest.fixture(params=[(w, h) for w in WIDTHS for h in HEIGHTS])
+@pytest.fixture(scope="module", params=[(w, h) for w in WIDTHS for h in HEIGHTS])
 def size(request):
     return request.param
 
 
-@pytest.fixture(params=["sparks", "plain"])
+@pytest.fixture(scope="module", params=["sparks", "plain"])
 def frame(request, snapshot, histories, size):
     width, height = size
     hist = histories if request.param == "sparks" else None
@@ -103,3 +103,62 @@ def test_sparklines_are_labelled_and_ordered(frame):
         elif len(rows) == 1:
             # 只剩一條時留使用率：記憶體多半長期不動，平線佔一行不划算
             assert rows[0].startswith("U ")
+
+
+TIME_COL = re.compile(r"\d+:\d{2}:\d{2}")
+MEM_BODY = re.compile(r"\d+(\.\d+)?[BKMGT]/\d+(\.\d+)?[BKMGT]")
+STATUS_WIDTHS = list(range(12, 120, 3))
+
+
+@pytest.mark.parametrize("width", STATUS_WIDTHS)
+def test_status_line_never_sacrifices_the_live_numbers(snapshot, width):
+    """版本是靜態資訊，任何寬度都先砍它；CPU / RAM 一格都不讓。"""
+    line = status_line(snapshot, width).plain
+    assert line.startswith("C ")
+    assert "  R " in line
+
+
+@pytest.mark.parametrize("width", STATUS_WIDTHS)
+def test_status_line_only_overflows_on_the_host_numbers(snapshot, width):
+    """版本欄放不下就整段不放 —— 絕不塞進去再讓 compose 截斷。"""
+    line = status_line(snapshot, width).plain
+    if cell_len(line) > width:
+        assert not any(form and form in line for form in version_forms(snapshot))
+
+
+def test_status_line_never_gains_information_as_it_narrows(snapshot):
+    """降級階梯必須單調：窄一格只能少東西，不能多。"""
+    seen = [cell_len(status_line(snapshot, w).plain) for w in range(120, 11, -1)]
+    assert seen == sorted(seen, reverse=True), seen
+
+
+def test_version_labels_shrink_before_the_versions_themselves(snapshot):
+    """`drv X  cuda Y` -> `X cuY` 只縮標籤，兩個版本號都還在。"""
+    forms = version_forms(snapshot)
+    widths = [cell_len(f) for f in forms]
+    assert widths == sorted(widths, reverse=True), forms
+    assert forms[-1] == ""
+    if snapshot.driver_version and snapshot.cuda_version:
+        compact = forms[1]
+        assert snapshot.driver_version in compact
+        assert snapshot.cuda_version in compact
+        assert "drv" not in compact
+
+
+@pytest.mark.parametrize("width", [40, 60, 78, 79, 100, 140])
+def test_proc_detail_columns_are_what_makes_l_tier_l(snapshot, width):
+    """L 與 M 的固定行數相同，這兩欄是 79 欄門檻僅存的理由。"""
+    lines = render(snapshot, width, 40)
+    proc_lines = [line for line in lines if re.match(r"\s*\d+ ", line)]
+    assert proc_lines, "高度足夠卻沒有 process 列"
+    assert all(TIME_COL.search(line) for line in proc_lines) == (tier_for(width) == "l")
+
+
+@pytest.mark.parametrize("width", [40, 56, 60, 79, 100, 140])
+def test_secondary_facts_never_occupy_their_own_line(snapshot, width):
+    """時脈與風扇掛在記憶體行尾巴，不自己佔一行。"""
+    orphans = [
+        line for line in render(snapshot, width, 40)
+        if ("MHz" in line or "fan " in line) and not MEM_BODY.search(line)
+    ]
+    assert not orphans, orphans

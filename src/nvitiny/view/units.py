@@ -42,8 +42,26 @@ def celsius(value: int | None) -> str | None:
     return None if value is None else f"{value}°C"
 
 
-def mhz(value: int | None) -> str | None:
-    return None if value is None else f"{value}MHz"
+def mhz(value: int | None, limit: int | None = None, *, compact: bool = False) -> str | None:
+    """2405/3003MHz。上限缺席時只印現值，跟 watts 同一套規則。"""
+    if value is None:
+        return None
+    if compact or limit is None:
+        return f"{value}MHz"
+    return f"{value}/{limit}MHz"
+
+
+def duration(seconds: float | None) -> str:
+    """57167 -> '15:52:47'。時分秒一律齊全，小時不進位成天。
+
+    nvitop 的 running_time_human 有三種形狀（'0:43' / '15:52:47' /
+    '4.2 days'），混在同一欄會歪掉，所以自己算。
+    """
+    if seconds is None:
+        return "-"
+    hours, rem = divmod(int(seconds), 3600)
+    minutes, secs = divmod(rem, 60)
+    return f"{hours}:{minutes:02d}:{secs:02d}"
 
 
 def truncate(text: str, width: int, *, ellipsis: str = "…") -> str:

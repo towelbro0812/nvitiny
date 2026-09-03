@@ -75,8 +75,12 @@ def rule(width: int) -> Text:
     return Text("─" * max(0, width), style=theme.RULE)
 
 
+TYPE_COL = 3   # 'C' / 'G' / 'C+G'
+TIME_COL = 8   # 99:59:59 以內，更久的自己往外長
+
+
 def proc_row(proc, width: int, *, show_user: bool, show_cpu: bool,
-             gpu_memory_total: int | None = None) -> Text:
+             show_detail: bool = False, gpu_memory_total: int | None = None) -> Text:
     """process 一行。欄位依寬度預算由右往左砍。"""
     pid = str(proc.pid).rjust(6)
     mem = fmt.bytes_short(proc.gpu_memory).rjust(5)
@@ -103,6 +107,15 @@ def proc_row(proc, width: int, *, show_user: bool, show_cpu: bool,
         out.append(" ")
         out.append(cpu, style=theme.load_color(min(proc.cpu_percent, 100)))
         used += 6
+    if show_detail:
+        out.append(" ")
+        out.append(fmt.duration(proc.running_time).rjust(TIME_COL), style=theme.DIM)
+        used += 1 + TIME_COL
+        out.append("  ")
+        # 繪圖的壓暗，讓計算型的 process 跳出來
+        kind = proc.type or "-"
+        out.append(kind.ljust(TYPE_COL), style=theme.DIM if kind == "G" else theme.LABEL)
+        used += 2 + TYPE_COL
     name_width = width - used - 2
     if name_width >= 3:
         out.append("  ")

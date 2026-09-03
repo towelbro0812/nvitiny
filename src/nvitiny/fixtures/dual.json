@@ -31,7 +31,8 @@
           "running_time_human": "6:12:44",
           "command": "/home/bob/.venv/bin/python train.py --model llama-3-8b --bs 8",
           "name": "python",
-          "type": "C"
+          "type": "C",
+          "running_time_in_seconds": 22364
         },
         {
           "pid": 884901,
@@ -43,7 +44,8 @@
           "running_time_human": "6:11:02",
           "command": "/usr/bin/python3 /home/bob/tools/tensorboard --logdir runs",
           "name": "tensorboard",
-          "type": "C"
+          "type": "C",
+          "running_time_in_seconds": 22262
         }
       ]
     },
@@ -76,7 +78,8 @@
           "running_time_human": "4:09:34",
           "command": "/usr/lib/xorg/Xorg vt1 -displayfd 3 -auth /run/user/120/gdm/Xauthority",
           "name": "Xorg",
-          "type": "C"
+          "type": "C",
+          "running_time_in_seconds": 14974
         }
       ]
     }

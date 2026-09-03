@@ -23,17 +23,39 @@ def na(value: Any) -> Any | None:
     return None if value is None or str(value) == "N/A" else value
 
 
+# nvitop 把時脈收在巢狀物件裡，fixture 是攤平的
+NESTED_PATHS = {
+    "clock_sm": ("clock_infos", "sm"),
+    "clock_sm_max": ("max_clock_infos", "sm"),
+    "clock_memory": ("clock_infos", "memory"),
+}
+
+
 class _Reader:
     """把 dict 與物件的取值方式統一，讓建構邏輯只需要寫一次。"""
 
     def __init__(self, source: Any) -> None:
         self._source = source
-        self._is_mapping = isinstance(source, dict)
 
     def __call__(self, name: str, default: Any = None) -> Any:
-        if self._is_mapping:
-            return na(self._source.get(name, default))
-        return na(getattr(self._source, name, default))
+        value = self._read(self._source, name, default)
+        if value is None and name in NESTED_PATHS:
+            value = self._walk(NESTED_PATHS[name])
+        return value
+
+    @staticmethod
+    def _read(node: Any, name: str, default: Any = None) -> Any:
+        if isinstance(node, dict):
+            return na(node.get(name, default))
+        return na(getattr(node, name, default))
+
+    def _walk(self, path: tuple[str, ...]) -> Any:
+        node = self._source
+        for name in path:
+            node = self._read(node, name)
+            if node is None:
+                return None
+        return node
 
 
 def _build_proc(source: Any) -> ProcSnapshot:
@@ -44,7 +66,7 @@ def _build_proc(source: Any) -> ProcSnapshot:
         gpu_memory=get("gpu_memory"),
         cpu_percent=get("cpu_percent"),
         memory_percent=get("memory_percent"),
-        running_time_human=get("running_time_human"),
+        running_time=get("running_time_in_seconds"),
         command=get("command"),
         name=get("name"),
         type=get("type"),
@@ -67,6 +89,7 @@ def _build_gpu(source: Any, procs: list[ProcSnapshot], host_memory_total: int | 
         power_usage=get("power_usage"),
         power_limit=get("power_limit"),
         clock_sm=get("clock_sm"),
+        clock_sm_max=get("clock_sm_max"),
         clock_memory=get("clock_memory"),
         processes=sorted(procs, key=lambda p: p.gpu_memory or 0, reverse=True),
         # GB10 / Jetson 上 GPU 與系統共用同一塊記憶體，實測比值剛好 1.0
@@ -105,16 +128,14 @@ def from_live() -> Snapshot:
     from nvitop import Device, host  # 延後匯入：--demo 不需要有 GPU
 
     memory = host.virtual_memory()
-    gpus = []
-    for device in Device.all():
-        snapshot = device.as_snapshot()
-        procs = [_build_proc(p.as_snapshot()) for p in device.processes().values()]
-        gpu = _build_gpu(snapshot, procs, memory.total)
-        # 時脈在 nvitop 是巢狀物件，攤平後才能走共用的建構路徑
-        clocks = snapshot.clock_infos
-        gpus.append(
-            replace_clocks(gpu, sm=na(clocks.sm), memory=na(clocks.memory)),
+    gpus = [
+        _build_gpu(
+            device.as_snapshot(),
+            [_build_proc(p.as_snapshot()) for p in device.processes().values()],
+            memory.total,
         )
+        for device in Device.all()
+    ]
     return Snapshot(
         driver_version=na(Device.driver_version()),
         cuda_version=na(Device.cuda_driver_version()),
@@ -126,9 +147,3 @@ def from_live() -> Snapshot:
             memory_percent=memory.percent,
         ),
     )
-
-
-def replace_clocks(gpu: GpuSnapshot, *, sm: int | None, memory: int | None) -> GpuSnapshot:
-    import dataclasses
-
-    return dataclasses.replace(gpu, clock_sm=sm, clock_memory=memory)
