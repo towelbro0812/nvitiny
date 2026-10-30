@@ -73,8 +73,11 @@ class LiveApp:
                 handler()
 
     def run(self) -> int:
-        with contextlib.suppress(ValueError, OSError):
-            signal.signal(signal.SIGWINCH, self._on_resize)
+        # Windows 沒有 SIGWINCH，改變大小會在下一次取樣時才反映
+        sigwinch = getattr(signal, "SIGWINCH", None)
+        if sigwinch is not None:
+            with contextlib.suppress(ValueError, OSError):
+                signal.signal(sigwinch, self._on_resize)
 
         with KeyReader() as reader, Live(
             console=self.console,

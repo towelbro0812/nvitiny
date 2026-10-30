@@ -147,6 +147,12 @@ def plan(
     # 最後只放得下「… 另有 N 個」提示，也比靜靜藏掉整份清單好。
     floor = sum(FIRST_PROC_COST for need in needs if need)
 
+    # 狀態列輸給「讓每張卡的 process 清單有個交代」，但贏過曲線：
+    # CPU / RAM 是即時數字，曲線只是裝飾
+    show_status = budget - 1 >= floor
+    if show_status:
+        budget -= 1
+
     # 曲線幾條：兩條(M+U) > 一條(U) > 不畫
     spark_lines = 0
     if has_sparks and shown:
@@ -156,11 +162,6 @@ def plan(
         elif room >= shown:
             spark_lines = 1
     budget -= spark_lines * shown
-
-    # 狀態列輸給「讓每張卡的 process 清單有個交代」
-    show_status = budget - 1 >= floor
-    if show_status:
-        budget -= 1
 
     proc_rows = _allocate_proc_rows(budget, needs)
 

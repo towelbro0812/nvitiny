@@ -65,8 +65,17 @@ def test_tier_degrades_when_height_is_short():
     assert plan(wide, 10, procs).tier == XS
 
 
+@pytest.mark.parametrize(("width", "height"), SIZES)
+@pytest.mark.parametrize("procs", GPU_SETS)
+def test_status_line_outranks_sparks(width, height, procs):
+    """CPU / RAM 是即時數字，曲線只是裝飾 —— 畫得出曲線卻砍掉狀態列是本末倒置。"""
+    p = plan(width, height, procs, has_sparks=True)
+    if p.spark_lines:
+        assert p.show_status
+
+
 def test_spark_lines_degrade_before_processes():
-    """犧牲順序：process 列數 → 版本行 → 第二條曲線 → 第一條曲線。"""
+    """犧牲順序：多出的 process 列 → 第二條曲線 → 第一條曲線 → 狀態列。"""
     seen = [plan(40, h, [3], has_sparks=True).spark_lines for h in range(20, 5, -1)]
     assert seen == sorted(seen, reverse=True), seen
     assert seen[0] == 2

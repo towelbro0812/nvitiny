@@ -18,7 +18,7 @@ from nvitiny.view.plan import BAR_MIN_WIDTH, FIXED_LINES, S, tier_for
 
 BAR = re.compile(r"▕([█░]*)▏")
 SPARK_CHARS = "⣀⣤⣶⣿⣷⣦⣴⠀⣠⣄⣆⣇⣧⣼⣾⡇⡄⡆⡀⢀⢠⢰⢸⣸"
-HIDDEN = re.compile(r"另有|\+\d")
+HIDDEN = re.compile(r"另有|\d+ more|\+\d")
 MIN_BAR_CELLS = 8
 
 WIDTHS = range(16, 200, 3)

@@ -6,6 +6,13 @@ alternate screen 那些程式碼完全不會執行，等於什麼都沒驗到。
 
 from __future__ import annotations
 
+import sys
+
+import pytest
+
+if sys.platform == "win32":
+    pytest.skip("需要 pty，只能在 Unix 上跑", allow_module_level=True)
+
 import fcntl
 import os
 import pty
@@ -13,11 +20,8 @@ import re
 import select
 import struct
 import subprocess
-import sys
 import termios
 import time
-
-import pytest
 
 ALT_ON, ALT_OFF = "\x1b[?1049h", "\x1b[?1049l"
 

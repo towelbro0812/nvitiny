@@ -148,8 +148,9 @@ def proc_block(gpu: GpuSnapshot, layout: LayoutPlan, limit: int) -> list[Text]:
         ))
     hidden = len(gpu.processes) - len(shown)
     if hidden:
-        # 中文是寬字元，窄屏放不下完整句子時退回極簡形式
-        note = f"  … 另有 {hidden} 個 process" if width >= 22 else f"  … +{hidden}"
+        # 窄屏放不下完整句子時退回極簡形式
+        noun = "process" if hidden == 1 else "processes"
+        note = f"  … {hidden} more {noun}" if width >= 22 else f"  … +{hidden}"
         lines.append(Text(fmt.truncate(note, width), style=theme.DIM))
     elif not gpu.processes:
         lines.append(Text(fmt.truncate("  無 process", width), style=theme.DIM))

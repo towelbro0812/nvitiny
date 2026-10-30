@@ -125,13 +125,18 @@ def from_fixture(name: str = "gb10") -> Snapshot:
 
 def from_live() -> Snapshot:
     """從 NVML 取樣。只用 nvitop.api（Apache-2.0），不碰 nvitop.tui（GPL-3.0）。"""
-    from nvitop import Device, host  # 延後匯入：--demo 不需要有 GPU
+    from nvitop import Device, GpuProcess, host  # 延後匯入：--demo 不需要有 GPU
 
     memory = host.virtual_memory()
+    # failsafe：讀不到的欄位（例如 Windows 上受保護的系統行程會 AccessDenied）
+    # 以 N/A 填補，而不是讓整次取樣失敗
     gpus = [
         _build_gpu(
             device.as_snapshot(),
-            [_build_proc(p.as_snapshot()) for p in device.processes().values()],
+            [
+                _build_proc(p)
+                for p in GpuProcess.take_snapshots(device.processes().values(), failsafe=True)
+            ],
             memory.total,
         )
         for device in Device.all()
